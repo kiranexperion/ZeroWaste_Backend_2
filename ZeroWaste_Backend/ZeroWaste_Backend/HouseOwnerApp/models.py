@@ -4,12 +4,6 @@ import CorporationApp.models as co_model
 
 # Create your models here.
 
-class wards(models.Model):
-
-    wardno = models.CharField(max_length = 200, primary_key=True)
-    wardname = models.CharField(max_length = 200)
-
-
 class login(AbstractUser):
 
     username = None
@@ -36,20 +30,20 @@ class houseowner(models.Model):
     phoneno = models.CharField(max_length = 200, unique=True)
     address = models.CharField(max_length = 1000)
     pincode = models.CharField(max_length = 50)
-    wardno = models.ForeignKey(wards, on_delete=models.CASCADE)
+    wardno = models.ForeignKey(co_model.wards, on_delete=models.CASCADE)
 
 class slotbooking(models.Model):
 
     waste_id = models.ForeignKey(co_model.wastes,on_delete=models.CASCADE)
     houseowner_id = models.ForeignKey(houseowner,on_delete=models.CASCADE)
     # collection_date = models.DateField(null=False)
-    booking_date = models.DateField(null=False)
+    booking_date = models.DateField(null = False)
     quantity = models.FloatField(null = False)
 
 class bookingstatus(models.Model):
 
     slot_id = models.ForeignKey(slotbooking, on_delete=models.CASCADE)
-    wastecollector_id = models.ForeignKey(co_model.wastecollector,null=True,on_delete=models.CASCADE)
+    supervisor_id = models.ForeignKey(co_model.employee,null=True,on_delete=models.CASCADE)
     status = models.CharField(max_length=200, default="Pending")
     collection_date = models.DateField(null=True)
     booking_date = models.DateField(null=False)
