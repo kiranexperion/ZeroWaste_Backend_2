@@ -6,7 +6,7 @@ from rest_framework.exceptions import AuthenticationFailed
 
 from .models import houseowner
 from .models import login
-from .models import slotbooking
+from .models import bookingstatus
 
 from .serializers import houseOwnerSerializer
 from .serializers import slotBookingSerializer
@@ -163,7 +163,8 @@ def getBookingStatus(request):
     ho_id = payload['id']
 
     cursor = connection.cursor()
-    cursor.execute("SELECT houseownerapp_slotbooking.booking_date,houseownerapp_bookingstatus.collection_date,corporationapp_wastes.waste_type,houseownerapp_bookingstatus.status,corporationapp_employee.firstname,corporationapp_employee.lastname from houseownerapp_slotbooking inner join corporationapp_wastes on corporationapp_wastes.id = houseownerapp_slotbooking.waste_id_id inner join houseownerapp_bookingstatus on houseownerapp_slotbooking.id = houseownerapp_bookingstatus.slot_id_id inner join corporationapp_employee on houseownerapp_bookingstatus.supervisor_id_id = corporationapp_employee.id where houseownerapp_slotbooking.houseowner_id_id = %s and houseownerapp_bookingstatus.status != %s",[ho_id,"Collected"])
+    # cursor.execute("SELECT houseownerapp_slotbooking.booking_date,houseownerapp_bookingstatus.collection_date,corporationapp_wastes.waste_type,houseownerapp_bookingstatus.status,corporationapp_employee.firstname,corporationapp_employee.lastname from houseownerapp_slotbooking inner join corporationapp_wastes on corporationapp_wastes.id = houseownerapp_slotbooking.waste_id_id inner join houseownerapp_bookingstatus on houseownerapp_slotbooking.id = houseownerapp_bookingstatus.slot_id_id inner join corporationapp_employee on houseownerapp_bookingstatus.supervisor_id_id = corporationapp_employee.id where houseownerapp_slotbooking.houseowner_id_id = %s and houseownerapp_bookingstatus.status != %s",[ho_id,"Collected"])
+    cursor.execute("SELECT  houseownerapp_bookingstatus.id,houseownerapp_slotbooking.booking_date,houseownerapp_bookingstatus.collection_date,corporationapp_wastes.waste_type,houseownerapp_bookingstatus.status from houseownerapp_slotbooking inner join corporationapp_wastes on corporationapp_wastes.id = houseownerapp_slotbooking.waste_id_id inner join houseownerapp_bookingstatus on houseownerapp_slotbooking.id = houseownerapp_bookingstatus.slot_id_id where houseownerapp_slotbooking.houseowner_id_id = %s and houseownerapp_bookingstatus.status != %s",[ho_id,"Collected"])
 
     result = cursor.fetchall()
 
@@ -173,11 +174,23 @@ def getBookingStatus(request):
 
         singleitem={}
 
-        singleitem["bookingdate"]=item[0]
-        singleitem["collectiondate"]=item[1]
-        singleitem["wastetype"]=item[2]
-        singleitem["supervisorname"]=item[4]+item[5]
-        singleitem["status"]=item[3]
+        singleitem["bookingdate"]=item[1]
+        # if item[1] is None:
+        #     singleitem["collectiondate"]= "0000-00-00"
+        # else:
+        singleitem["collectiondate"]= item[2]
+        singleitem["wastetype"]=item[3]
+        # if item[4] is None and item[5] is None:
+        #     singleitem["supervisorname"]="NA"
+        # else:
+        if item[2] is None:
+            singleitem["supervisorname"]="NA"
+        else:
+            b_status = bookingstatus.objects.filter(id = item[0]).first()
+            firstname = b_status.supervisor_id.firstname
+            lastname = b_status.supervisor_id.lastname
+            singleitem["supervisorname"]= firstname + " " + lastname
+        singleitem["status"]=item[4]
 
         final_list.append(singleitem)
 

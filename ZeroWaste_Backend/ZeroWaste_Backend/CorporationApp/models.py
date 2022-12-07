@@ -41,5 +41,6 @@ class collectionstatus(models.Model):
 
     supervisor_id = models.ForeignKey(employee,on_delete=models.CASCADE)
     wardno = models.ForeignKey(wards,on_delete=models.CASCADE)
-    status = models.CharField(max_length=200, default="Pending")
+    status = models.CharField(max_length=200, default="Pending", null=True)
+    collection_date = models.DateField(null=True)
     
