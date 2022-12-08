@@ -14,4 +14,7 @@ urlpatterns = [
     path('corporation/deletewaste/',views.postDeleteWaste,name='deletewaste'),
     path('corporation/collectionstatusupdate/',views.postCollectionStatusUpdate,name='collectionstatusupdate'),
     path('corporation/collectionstatus/',views.postCollectionStatus,name='collectionstatus'),
+    path('corporation/collectorallocation/',views.postCollectorAllocation,name='collectorallocation'),
+    path('corporationapp/employeelist/', views.Employee_details, name='EmployeesList'),
+    path('corporationapp/supervisorslist/', views.getSupervisors, name='SupervisorsList'),
 ]

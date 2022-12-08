@@ -8,6 +8,7 @@ from .models import wards
 from .models import wastecollector
 from .models import wastes
 from .models import employee
+from HouseOwnerApp.models import houseowner,slotbooking
 from HouseOwnerApp.models import login
 from HouseOwnerApp.models import bookingstatus
 from .models import collectionstatus
@@ -16,10 +17,12 @@ from .serializers import wardsSerializer
 from .serializers import wastesSerializer
 from .serializers import wastecollectorSerializer
 from .serializers import collectionstatusSerializer
+from .serializers import employeeSerializer
 from HouseOwnerApp.serializers import loginSerializer
 
 import jwt, datetime
 from django.db import connection
+import pandas as pd
 
 
 @api_view(['GET'])
@@ -262,7 +265,7 @@ def postCollectionStatus(request):
     return Response(final_list)
 
 @api_view(['POST'])
-def postCollector(request):
+def postCollectorAllocation(request):
     token = request.headers['Authorization']
     if not token:
         raise AuthenticationFailed('Unauthenticated!')
@@ -270,3 +273,52 @@ def postCollector(request):
         payload = jwt.decode(token,'secret',algorithms=['HS256'])
     except jwt.ExpiredSignatureError :
         raise AuthenticationFailed('Unauthenticated!')
+
+    wardno = request.data['wardno']
+    supervisor_id = request.data['supervisor_id']
+    collection_date = request.data['collection_date']
+    status = request.data['status']
+
+    data = {'status':status,'collection_date':collection_date,'supervisor_id':supervisor_id,'wardno':wardno}
+    serializer = collectionstatusSerializer(data = data)
+    if(serializer.is_valid()):
+        serializer.save()
+
+    x = bookingstatus.objects.all()
+    print(x)
+    for item in x:
+        print(item.slot_id.houseowner_id.wardno)
+        if(item.slot_id.houseowner_id.wardno.wardno == wardno):
+            item.collection_date = collection_date
+            item.supervisor_id = employee.objects.filter(id = supervisor_id).first()
+            item.status = status
+            item.save()
+    return Response({'status':1})
+    
+@api_view(['POST'])
+def Employee_details(request):
+    if request.method == 'POST' and request.FILES['file']:
+        # fs=FileSystemStorage()
+        # filename=fs.save      
+        employeeexceldata = pd.read_excel(request.FILES['file'] )
+        # print(productexceldata)
+        dbframe = employeeexceldata
+        for dbframe in dbframe.itertuples():
+            obj = wastecollector.objects.create(firstname=dbframe.firstname,lastname=dbframe.lastname,email=dbframe.email, phoneno=dbframe.phoneno, address=dbframe.address,wardno_id=dbframe.wardno_id,)
+            obj.save()
+
+    return Response({'message':'File Added Successfully'})
+
+@api_view(['GET'])
+def getSupervisors(request):
+    supervisorsList = employee.objects.filter(role_id = 4)
+
+    final_list=[]
+    for item in supervisorsList:
+        singleitem={}
+        singleitem['id'] = item.id
+        singleitem['name']= item.firstname + " " + item.lastname
+
+        final_list.append(singleitem)
+
+    return Response(final_list)
