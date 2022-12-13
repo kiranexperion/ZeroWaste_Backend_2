@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'HouseOwnerApp',
     'CorporationApp',
+    'LoginApp',
     'rest_framework',
     'corsheaders',
 ]
@@ -140,6 +141,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 ALLOWED_HOSTS=['*']
 CORS_ORIGIN_ALLOW_ALL = True
 
-AUTH_USER_MODEL = 'HouseOwnerApp.login'
+AUTH_USER_MODEL = 'LoginApp.login'
 ACCOUNT_USER_MODEL_USERNAME_FIELD = None
 

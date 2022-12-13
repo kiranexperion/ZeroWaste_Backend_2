@@ -9,7 +9,7 @@ from .models import wastecollector
 from .models import wastes
 from .models import employee
 from HouseOwnerApp.models import houseowner,slotbooking
-from HouseOwnerApp.models import login
+# from HouseOwnerApp.models import login
 from HouseOwnerApp.models import bookingstatus
 from .models import collectionstatus
 
@@ -18,7 +18,7 @@ from .serializers import wastesSerializer
 from .serializers import wastecollectorSerializer
 from .serializers import collectionstatusSerializer
 from .serializers import employeeSerializer
-from HouseOwnerApp.serializers import loginSerializer
+# from HouseOwnerApp.serializers import loginSerializer
 
 import jwt, datetime
 from django.db import connection
@@ -37,10 +37,10 @@ def getWastes(request):
     serializer = wastesSerializer(wasteList, many = True)
     return Response(serializer.data)
 
-@api_view(['POST'])
-def postCorporationlogin(request):
-    data_email = request.data['email']
-    data_password = request.data['password']
+# @api_view(['POST'])
+# def postCorporationlogin(request):
+#     data_email = request.data['email']
+#     data_password = request.data['password']
 
     # FOR FIRST TIME LOGIN
     # emp = employee.objects.filter(email = data_email).first()
@@ -52,24 +52,25 @@ def postCorporationlogin(request):
     #         serializer.save()
     # return Response(serializer.data)
 
-    user = login.objects.filter(email = data_email).first()
+    # user = login.objects.filter(email = data_email).first()
 
-    if user is None:
-        raise AuthenticationFailed('User not found')
-    if not user.check_password(data_password):
-        raise AuthenticationFailed('Incorrect password')
-    payload = {
-        'id':user.userid,
-        'exp':datetime.datetime.utcnow()+datetime.timedelta(minutes=60),
-        'iat':datetime.datetime.utcnow()
-    }
+    # if user is None:
+    #     raise AuthenticationFailed('User not found')
+    # if not user.check_password(data_password):
+    #     raise AuthenticationFailed('Incorrect password')
+    # payload = {
+    #     'id':user.userid,
+    #     'exp':datetime.datetime.utcnow()+datetime.timedelta(minutes=60),
+    #     'iat':datetime.datetime.utcnow()
+    # }
 
-    token = jwt.encode(payload, 'secret',algorithm='HS256')
-    response =  Response()
-    response.set_cookie(key = 'jwt',value=token, httponly=True)
-    response.data = {'jwt': token,'status':1,'role':user.roleid}
-    return response
+    # token = jwt.encode(payload, 'secret',algorithm='HS256')
+    # response =  Response()
+    # response.set_cookie(key = 'jwt',value=token, httponly=True)
+    # response.data = {'jwt': token,'status':1,'role':user.roleid}
+    # return response
 
+#To display the list of collectors based on ward - Corporation->Contract Employees
 @api_view(['POST'])
 def postCollectorList(request):
     token = request.headers['Authorization']
@@ -211,6 +212,7 @@ def postDeleteWaste(request):
     else:
         return Response({'status':0})
 
+#Updation from supervisor
 @api_view(['POST'])
 def postCollectionStatusUpdate(request):
     token = request.headers['Authorization']
@@ -240,6 +242,7 @@ def postCollectionStatusUpdate(request):
         serializer = collectionstatusSerializer(collection_status,many = False)
         return Response({'status':1,'data':serializer.data})
 
+#View the collection status based on a collection date
 @api_view(['POST'])
 def postCollectionStatus(request):
     token = request.headers['Authorization']
@@ -294,9 +297,18 @@ def postCollectorAllocation(request):
             item.status = status
             item.save()
     return Response({'status':1})
-    
+
+# Excel file upload of contract employees
 @api_view(['POST'])
 def Employee_details(request):
+    token = request.headers['Authorization']
+    if not token:
+        raise AuthenticationFailed('Unauthenticated!')
+    try:
+        payload = jwt.decode(token,'secret',algorithms=['HS256'])
+    except jwt.ExpiredSignatureError :
+        raise AuthenticationFailed('Unauthenticated!')
+
     if request.method == 'POST' and request.FILES['file']:
         # fs=FileSystemStorage()
         # filename=fs.save      
@@ -322,3 +334,4 @@ def getSupervisors(request):
         final_list.append(singleitem)
 
     return Response(final_list)
+
