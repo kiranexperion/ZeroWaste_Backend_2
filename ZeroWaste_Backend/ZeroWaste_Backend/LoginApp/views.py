@@ -1,5 +1,4 @@
 from django.shortcuts import render
-
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.exceptions import AuthenticationFailed
@@ -8,6 +7,7 @@ import jwt, datetime
 
 from .models import login
 from CorporationApp.models import employee
+from .serializers import loginSerializer
 
 @api_view(['POST'])
 def postlogin(request):
@@ -40,5 +40,4 @@ def postlogin(request):
     response =  Response()
     response.set_cookie(key = 'jwt',value=token, httponly=True)
     response.data = {'jwt': token,'status':1,'role':user.roleid.id}
-    # response.headers = {'jwt': token}
     return response

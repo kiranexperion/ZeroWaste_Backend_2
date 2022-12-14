@@ -12,13 +12,14 @@ from HouseOwnerApp.models import houseowner,slotbooking
 # from HouseOwnerApp.models import login
 from HouseOwnerApp.models import bookingstatus
 from .models import collectionstatus
+from LoginApp.models import login
 
 from .serializers import wardsSerializer
 from .serializers import wastesSerializer
 from .serializers import wastecollectorSerializer
 from .serializers import collectionstatusSerializer
 from .serializers import employeeSerializer
-# from HouseOwnerApp.serializers import loginSerializer
+from LoginApp.serializers import loginSerializer
 
 import jwt, datetime
 from django.db import connection
@@ -36,39 +37,6 @@ def getWastes(request):
     wasteList = wastes.objects.all()
     serializer = wastesSerializer(wasteList, many = True)
     return Response(serializer.data)
-
-# @api_view(['POST'])
-# def postCorporationlogin(request):
-#     data_email = request.data['email']
-#     data_password = request.data['password']
-
-    # FOR FIRST TIME LOGIN
-    # emp = employee.objects.filter(email = data_email).first()
-    # roleid = emp.role_id.id
-    # userid = emp.id
-    # data = {'roleid':roleid,'userid':userid,'email':data_email,'password':data_password}
-    # serializer = loginSerializer(data = data)
-    # if(serializer.is_valid()):
-    #         serializer.save()
-    # return Response(serializer.data)
-
-    # user = login.objects.filter(email = data_email).first()
-
-    # if user is None:
-    #     raise AuthenticationFailed('User not found')
-    # if not user.check_password(data_password):
-    #     raise AuthenticationFailed('Incorrect password')
-    # payload = {
-    #     'id':user.userid,
-    #     'exp':datetime.datetime.utcnow()+datetime.timedelta(minutes=60),
-    #     'iat':datetime.datetime.utcnow()
-    # }
-
-    # token = jwt.encode(payload, 'secret',algorithm='HS256')
-    # response =  Response()
-    # response.set_cookie(key = 'jwt',value=token, httponly=True)
-    # response.data = {'jwt': token,'status':1,'role':user.roleid}
-    # return response
 
 #To display the list of collectors based on ward - Corporation->Contract Employees
 @api_view(['POST'])
@@ -335,3 +303,158 @@ def getSupervisors(request):
 
     return Response(final_list)
 
+
+@api_view(['GET'])
+def getSupervisorList(request):
+    token = request.headers['Authorization']
+    if not token:
+        raise AuthenticationFailed('Unauthenticated!')
+    try:
+        payload = jwt.decode(token,'secret',algorithms=['HS256'])
+    except jwt.ExpiredSignatureError :
+        raise AuthenticationFailed('Unauthenticated!')
+
+    supervisorList = employee.objects.filter(roleid = 4)
+    
+    if not supervisorList:
+       return Response({'status':0})
+    else:
+        serializer = employeeSerializer(supervisorList, many = True)
+        return Response({'status':1,'data':serializer.data})
+
+@api_view(['PUT'])
+def updateSupervisor(request):
+
+    token = request.headers['Authorization']
+    if not token:
+        raise AuthenticationFailed('Unauthenticated!')
+    try:
+        payload = jwt.decode(token,'secret',algorithms=['HS256'])
+    except jwt.ExpiredSignatureError :
+        raise AuthenticationFailed('Unauthenticated!')
+
+    data_id =request.data['id']
+    data_email=request.data['email']
+    data_phoneno=request.data['phoneno']
+    data_address=request.data['address']
+    supervisor = employee.objects.filter(id = data_id).first()
+    if supervisor is None:
+        raise NotFound('Not found.')
+    else:
+        supervisor.email=data_email
+        supervisor.phoneno=data_phoneno
+        supervisor.address=data_address
+        supervisor.save()
+        serializer = employeeSerializer(supervisor,many=False)
+        return Response({'status':1,'data':serializer.data})
+
+ 
+
+@api_view(['POST'])
+def postAddSupervisor(request):
+    token = request.headers['Authorization']
+    if not token:
+        raise AuthenticationFailed('Unauthenticated!')
+    try:
+        payload = jwt.decode(token,'secret',algorithms=['HS256'])
+    except jwt.ExpiredSignatureError :
+        raise AuthenticationFailed('Unauthenticated!')
+
+    data_email = request.data['email']
+    data_password = 'supervisor@123'
+
+    serializer = employeeSerializer(data = request.data)
+    if(serializer.is_valid()):
+        serializer.save()
+        login_data = {'roleid':4, 'userid':serializer.data['id'],'email':data_email,'password':data_password}
+        serializer_1 = loginSerializer(data = login_data)
+        if(serializer_1.is_valid()):
+            serializer_1.save()
+        return Response({'status':1,'message':'Successfully Saved','data':serializer.data})
+    else:
+        return Response({'status':0,'message':'OOPS Some error occured','data':serializer.errors})
+
+@api_view(['POST'])
+def postDeleteSupervisor(request):
+    token = request.headers['Authorization']
+    if not token:
+        raise AuthenticationFailed('Unauthenticated!')
+    try:
+        payload = jwt.decode(token,'secret',algorithms=['HS256'])
+    except jwt.ExpiredSignatureError :
+        raise AuthenticationFailed('Unauthenticated!')
+
+    data_id=request.data['id']
+    supervisor = employee.objects.filter(id = data_id).delete()
+    response = Response()
+    if supervisor[0]==1:
+        response.data = {'status':1,'message': 'Successfully deleted'}
+        return response
+    else:
+
+        return Response({'status':0})
+
+@api_view(['POST'])
+def postWasteReport(request):
+    token = request.headers['Authorization']
+    if not token:
+        raise AuthenticationFailed('Unauthenticated!')
+    try:
+        payload = jwt.decode(token,'secret',algorithms=['HS256'])
+    except jwt.ExpiredSignatureError :
+        raise AuthenticationFailed('Unauthenticated!')
+
+    wasteid = request.data['wasteid']
+
+    slots = slotbooking.objects.filter(waste_id = wasteid)
+    ward_quantity_list = {}
+    for slot in slots:
+            slot_status = bookingstatus.objects.filter(slot_id = slot.id).first()
+            if slot_status.status != 'Collected':
+                wardname = slot.houseowner_id.wardno.wardname
+                if wardname not in ward_quantity_list:
+                    ward_quantity_list[wardname] = slot.quantity
+                else:
+                    ward_quantity_list[wardname] = ward_quantity_list[wardname] + slot.quantity
+    final_list = [ward_quantity_list]
+    return Response(final_list)
+
+# @api_view(['POST'])
+# def postChangePassword(request):
+#     token = request.headers['Authorization']
+#     if not token:
+#         raise AuthenticationFailed('Unauthenticated!')
+#     try:
+#         payload = jwt.decode(token,'secret',algorithms=['HS256'])
+#     except jwt.ExpiredSignatureError :
+#         raise AuthenticationFailed('Unauthenticated!')
+
+#     supervisor_id = payload['id']
+#     new_password = request.data['newpw']
+#     supervisor = login.objects.filter(roleid = 4, userid = supervisor_id).first()
+#     supervisor.password = new_password
+    
+#     # data = {'roleid':4, 'userid':supervisor_id,'email':email,'password':new_password}
+#     # serializer = loginSerializer(data = data)
+#     # if(supervisor.is_valid()):
+#     supervisor.save()
+#     data_password = supervisor.password
+#     if not supervisor.check_password(data_password):
+#         return Response({'status':0,'message':'OOPS Some error occured'})
+#     else:
+#         return Response({'status':1,'message':'Password Changed Successfully'})
+#     # else:
+#     #     return Response({'status':0,'message':'OOPS Some error occured','data':supervisor.errors})
+
+
+
+'''
+SUPERADMIN - Reports?
+SUPERADMIN/ADMIN - Waste report - KIRAN - Done - integration pending
+                - Payment report - ARJUN
+                - Complaint inbox
+SUPERVISOR - Collection Details
+            - Change Password
+'''
+
+                  

@@ -1,26 +1,5 @@
 from rest_framework import serializers
-
-from .models import houseowner
-# from .models import login
-from .models import slotbooking
-from .models import bookingstatus
-from .models import payment, paymentstatus, complaints, complaintstatus
-
-# class loginSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = login
-#         fields = ['id','roleid','userid','email','password']
-#         extra_kwargs = {
-#             'password':{'write_only':True}
-#         }
-
-#     def create(self,validated_data):
-#         password = validated_data.pop('password',None)
-#         instance = self.Meta.model(**validated_data)
-#         if password is not None:
-#             instance.set_password(password)
-#         instance.save()
-#         return instance
+from .models import houseowner, slotbooking, bookingstatus, payment, paymentstatus, complaints, complaintstatus
 
 class houseOwnerSerializer(serializers.ModelSerializer):
     class Meta:
@@ -50,11 +29,9 @@ class paymentStatusSerializer(serializers.ModelSerializer):
 class complaintsSerializer(serializers.ModelSerializer):
     class Meta:
         model = complaints
-        fields = ('__all__')      
-
- 
+        fields = ('__all__')       
 
 class complaintStatusSerializer(serializers.ModelSerializer):
     class Meta:
-        model = complaints
+        model = complaintstatus
         fields = ('__all__')  

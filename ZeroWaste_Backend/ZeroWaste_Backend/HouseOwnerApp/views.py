@@ -6,9 +6,8 @@ from rest_framework.exceptions import AuthenticationFailed
 from .models import houseowner, bookingstatus, slotbooking, payment, paymentstatus
 from CorporationApp.models import wastes
 
-from .serializers import houseOwnerSerializer, slotBookingSerializer, bookingStatusSerializer, paymentSerializer, paymentStatusSerializer
+from .serializers import houseOwnerSerializer, slotBookingSerializer, bookingStatusSerializer, paymentSerializer, paymentStatusSerializer, complaintsSerializer, complaintStatusSerializer
 from LoginApp.serializers import loginSerializer
-from .serializers import complaintsSerializer, complaintStatusSerializer
 
 import jwt, datetime
 from django.db import connection
@@ -40,37 +39,6 @@ def postHouseOwner(request):
         return Response({'status':1,'message':'Successfully Saved','data':serializer.data})
     else:
         return Response({'status':0,'message':'OOPS Some error occured','data':serializer.errors})
-
-# @api_view(['POST'])
-# def postHouseOwnerlogin(request):
-#     data_email = request.data['email']
-#     data_password = request.data['password']
-
-#     user = login.objects.filter(email = data_email).first()
-
-#     if user is None:
-#         raise AuthenticationFailed('User not found')
-#     if not user.check_password(data_password):
-#         raise AuthenticationFailed('Incorrect password')
-#     payload = {
-#         'id':user.userid,
-#         'exp':datetime.datetime.utcnow()+datetime.timedelta(minutes=60),
-#         'iat':datetime.datetime.utcnow()
-#     }
-
-#     token = jwt.encode(payload, 'secret',algorithm='HS256')
-#     response =  Response()
-#     response.set_cookie(key = 'jwt',value=token, httponly=True)
-#     response.data = {'jwt': token,'status':1}
-#     # response.headers = {'jwt': token}
-#     return response
-
-# @api_view(['POST'])
-# def postLogoutView(request):
-#     response = Response()
-#     response.delete_cookie('jwt')
-#     response.data = {'message': 'Successfully logged out','status':1}
-#     return response
 
 @api_view(['POST'])
 def postSlotBooking(request):
@@ -191,25 +159,23 @@ def getBillGeneration(request):
         lastpay_month = user.last_paydate.month
     else:
         lastpay_month = None
-    # grand_total = 0
+    grand_total = 0
     final_list=[]
 
     if current_month == lastpay_month:
         return Response({'message':'No Pending Bills'})
     else:
-        # collected_slots = bookingstatus.objects.filter(status = 'Collected')
-        # slots = slotbooking.objects.filter(id = collected_slots.slot_id.id, houseowner_id  = ho_id, payment_status = 0)
         slots = slotbooking.objects.filter(houseowner_id  = ho_id, payment_status = 0)
 
         waste_list = {}
         for slot in slots:
-            # bookingstatus.slot_id.id = slot.id
-            if slot.waste_id.waste_type not in waste_list:
-                waste_list[slot.waste_id.waste_type] = slot.quantity
-            else:
-                waste_list[slot.waste_id.waste_type] = waste_list[slot.waste_id.waste_type] + slot.quantity
-            slot.payment_status = 1
-            slot.save()
+            slot_status = bookingstatus.objects.filter(slot_id = slot.id).first()
+            if slot_status.status == 'Collected':
+                waste_type = slot.waste_id.waste_type
+                if waste_type not in waste_list:
+                    waste_list[waste_type] = slot.quantity
+                else:
+                    waste_list[waste_type] = waste_list[waste_type] + slot.quantity
         for i in waste_list:
             bill_item = {}
             waste = wastes.objects.filter(waste_type = i).first()
@@ -219,23 +185,9 @@ def getBillGeneration(request):
             bill_item['quantity'] = waste_list[i]
             bill_item['unit_price'] = unit_price
             bill_item['total'] = total
-            # grand_total = grand_total + total
+            grand_total = grand_total + total
             final_list.append(bill_item)
-        return Response(final_list)
-        # data = {'houseowner_id':ho_id,'totalamount':grand_total,'pay_date':today}
-        # serializer = paymentSerializer(data = data)  
-        # if(serializer.is_valid()):
-        #     serializer.save()
-        #     payments = paymentstatus.objects.filter(houseowner = ho_id).first()
-        #     if payments is None:
-        #         data_1 = {'houseowner':ho_id,'last_paydate':today}
-        #         serializer_1 = paymentStatusSerializer(data=data_1)
-        #         if(serializer_1.is_valid()):
-        #             serializer_1.save()
-        #     else:
-        #         payments.last_paydate = today
-        #         payments.save()
-        
+        return Response({'bill':final_list,'grandtotal':grand_total})     
 
 @api_view(['POST'])
 def postPayment(request):
@@ -252,7 +204,13 @@ def postPayment(request):
     grandtotal = request.data['grandtotal']
     status = request.data['status']
 
-    if status is 1:
+    if status == 1:
+        slots = slotbooking.objects.filter(houseowner_id  = ho_id, payment_status = 0)
+        for slot in slots:
+            slot_status = bookingstatus.objects.filter(slot_id = slot.id).first()
+            if slot_status.status == 'Collected':
+                slot.payment_status = 1
+                slot.save()
         data = {'houseowner_id':ho_id,'totalamount':grandtotal,'pay_date':paydate}
         serializer = paymentSerializer(data = data)  
         if(serializer.is_valid()):
@@ -285,14 +243,16 @@ def postComplaints(request):
     subject = request.data['subject']
     description = request.data['description']
     registrationdate = request.data['registrationdate']
-    issuedate = request.data['issuedate']  
+    issuedate = request.data['issuedate'] 
+    user = houseowner.objects.filter(id = ho_id).first()
+    wardno = user.wardno
 
-    data ={'houseowner_id':ho_id,'subject':subject,'description':description,'registrationdate':registrationdate,'issuedate':issuedate}
+    data ={'houseowner_id':ho_id,'wardno':wardno,'subject':subject,'description':description,'registrationdate':registrationdate,'issuedate':issuedate}
     serializer = complaintsSerializer(data = data)
 
     if(serializer.is_valid()):
         serializer.save()
-        data_1 = {'subject':subject,'description':description,'registrationdate':registrationdate,'complaints_id':serializer.data['id']}
+        data_1 = {'houseowner_id':ho_id,'registrationdate':registrationdate,'complaints_id':serializer.data['id']}
         serializer_1 = complaintStatusSerializer(data = data_1)
         if(serializer_1.is_valid()):
             serializer_1.save()
@@ -312,17 +272,39 @@ def getcomplaintstatus(request):
         raise AuthenticationFailed('Unauthenticated!')
  
     cursor = connection.cursor()
-    cursor.execute("SELECT houseownerapp_complaints.registrationdate,houseownerapp_complaints.subject,houseownerapp_complaints.description,houseownerapp_complaintstatus.remarks,houseownerapp_complaintstatus.status from houseownerapp_complaints inner join houseownerapp_complaintstatus on houseownerapp_complaints.id = houseownerapp_complaintstatus.complaints_id_id")
+    cursor.execute("SELECT houseownerapp_complaints.registrationdate,houseownerapp_complaints.issuedate,houseownerapp_complaints.subject,houseownerapp_complaints.description,houseownerapp_complaintstatus.remarks,houseownerapp_complaintstatus.status from houseownerapp_complaints inner join houseownerapp_complaintstatus on houseownerapp_complaints.id = houseownerapp_complaintstatus.complaints_id_id")
     result = cursor.fetchall()
     final_list=[]
 
     for item in result:
         singleitem={}
         singleitem["registrationdate"]=item[0]
-        singleitem["subject"]=item[1]
-        singleitem["description"]=item[2]
-        singleitem["remarks"]=item[4]+item[5]
-        singleitem["status"]=item[3]
+        singleitem["issuedate"]=item[1]
+        singleitem["subject"]=item[2]
+        singleitem["description"]=item[3]
+        singleitem["remarks"]=item[4]
+        singleitem["status"]=item[5]
         final_list.append(singleitem)
 
     return Response(final_list)
+
+@api_view(['GET'])
+def getPaymentHistory(request):
+    token = request.headers['Authorization']
+    if not token:
+        raise AuthenticationFailed('Unauthenticated!')
+    try:
+        payload = jwt.decode(token,'secret',algorithms=['HS256'])
+    except jwt.ExpiredSignatureError :
+        raise AuthenticationFailed('Unauthenticated!')
+
+    ho_id = payload['id']
+    payment_history = payment.objects.filter(houseowner_id = ho_id)
+
+    final_list=[]
+    for item in payment_history:
+        singleitem = {}
+        singleitem["totalamount"] = item.totalamount
+        singleitem["pay_date"] = item.pay_date
+        final_list.append(singleitem)
+    return Response(final_list) 

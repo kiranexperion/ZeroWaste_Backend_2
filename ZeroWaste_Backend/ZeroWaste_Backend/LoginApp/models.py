@@ -1,8 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+
 import CorporationApp.models as co_model
 
-# Create your models here.
 class login(AbstractUser):
 
     username = None
@@ -12,9 +12,9 @@ class login(AbstractUser):
     is_active = None
     is_superuser = None
 
-    roleid = models.ForeignKey(co_model.roles, on_delete=models.CASCADE)
-    userid = models.BigIntegerField(null=False)
-    email = models.CharField(max_length = 200, unique=True)
+    roleid = models.ForeignKey(co_model.roles, on_delete = models.CASCADE)
+    userid = models.BigIntegerField(null = False)
+    email = models.CharField(max_length = 200, unique = True)
     password = models.CharField(max_length = 200)
 
     USERNAME_FIELD = 'email'
