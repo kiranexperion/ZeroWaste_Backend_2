@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from .models import houseowner, slotbooking, bookingstatus, payment, paymentstatus, complaints, complaintstatus
+
+from .models import houseowner, slotbooking, bookingstatus, payment, paymentstatus
 
 class houseOwnerSerializer(serializers.ModelSerializer):
     class Meta:
@@ -25,13 +26,4 @@ class paymentStatusSerializer(serializers.ModelSerializer):
     class Meta:
         model = paymentstatus
         fields = ('__all__')
-
-class complaintsSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = complaints
-        fields = ('__all__')       
-
-class complaintStatusSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = complaintstatus
-        fields = ('__all__')  
+  

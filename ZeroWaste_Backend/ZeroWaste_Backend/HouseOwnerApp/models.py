@@ -38,20 +38,3 @@ class paymentstatus(models.Model):
 
     houseowner = models.ForeignKey(houseowner, on_delete = models.CASCADE)
     last_paydate = models.DateField()
-
-class complaints(models.Model):
-
-    houseowner_id = models.ForeignKey(houseowner, on_delete = models.CASCADE)
-    wardno = models.ForeignKey(co_model.wards, on_delete = models.CASCADE)
-    subject = models.CharField(max_length = 100)
-    description = models.TextField()
-    issuedate = models.DateField()
-    registrationdate = models.DateField()
-
-class complaintstatus(models.Model):
-
-    houseowner_id = models.ForeignKey(houseowner, on_delete = models.CASCADE)
-    complaints_id = models.ForeignKey(complaints, on_delete = models.CASCADE)
-    remarks = models.TextField(null = True, default = 'NA')
-    status = models.CharField(max_length = 200, default = 'Pending')
-    registrationdate = models.DateField()

@@ -6,13 +6,16 @@ from rest_framework.exceptions import AuthenticationFailed
 from .models import houseowner, bookingstatus, slotbooking, payment, paymentstatus
 from CorporationApp.models import wastes
 
-from .serializers import houseOwnerSerializer, slotBookingSerializer, bookingStatusSerializer, paymentSerializer, paymentStatusSerializer, complaintsSerializer, complaintStatusSerializer
+from .serializers import houseOwnerSerializer, slotBookingSerializer, bookingStatusSerializer, paymentSerializer, paymentStatusSerializer
 from LoginApp.serializers import loginSerializer
 
 import jwt, datetime
 from django.db import connection
 
-
+'''
+House Owner - Signup 
+Developed by: KIRAN
+'''
 @api_view(['POST'])
 def postHouseOwner(request):
     
@@ -40,6 +43,11 @@ def postHouseOwner(request):
     else:
         return Response({'status':0,'message':'OOPS Some error occured','data':serializer.errors})
 
+
+'''
+House Owner - Slot Booking
+Developed by: KIRAN
+'''
 @api_view(['POST'])
 def postSlotBooking(request):
     token = request.headers['Authorization']
@@ -69,6 +77,11 @@ def postSlotBooking(request):
     else:
         return Response({'status':0,'message':'OOPS Some error occured','data':serializer.errors})
 
+
+'''
+House Owner - Booking History
+Developed by: KIRAN
+'''
 @api_view(['GET'])
 def getBookingHistory(request):
     token = request.headers['Authorization']
@@ -81,7 +94,6 @@ def getBookingHistory(request):
     ho_id = payload['id']
 
     cursor = connection.cursor()
-    # cursor.execute("SELECT houseownerapp_slotbooking.booking_date,houseownerapp_bookingstatus.collected_date,corporationapp_wastes.waste_type,houseownerapp_bookingstatus.wastecollector_id from houseownerapp_slotbooking inner join corporationapp_wastes on corporationapp_wastes.id = houseownerapp_slotbooking.waste_id_id inner join houseownerapp_bookingstatus on houseownerapp_slotbooking.id = houseownerapp_bookingstatus.slot_id_id where houseownerapp_slotbooking.houseowner_id_id = %s and houseownerapp_bookingstatus.status = %s",[ho_id,"collected"])
     cursor.execute("SELECT houseownerapp_slotbooking.booking_date,houseownerapp_bookingstatus.collection_date,corporationapp_wastes.waste_type,corporationapp_employee.firstname,corporationapp_employee.lastname from houseownerapp_slotbooking inner join corporationapp_wastes on corporationapp_wastes.id = houseownerapp_slotbooking.waste_id_id inner join houseownerapp_bookingstatus on houseownerapp_slotbooking.id = houseownerapp_bookingstatus.slot_id_id inner join corporationapp_employee on houseownerapp_bookingstatus.supervisor_id_id = corporationapp_employee.id where houseownerapp_slotbooking.houseowner_id_id = %s and houseownerapp_bookingstatus.status = %s",[ho_id,"Collected"])
 
     result = cursor.fetchall()
@@ -101,6 +113,11 @@ def getBookingHistory(request):
 
     return Response(final_list)
 
+
+'''
+House Owner - Booking Status
+Developed by: KIRAN
+'''
 @api_view(['GET'])
 def getBookingStatus(request):
     token = request.headers['Authorization']
@@ -113,7 +130,6 @@ def getBookingStatus(request):
     ho_id = payload['id']
 
     cursor = connection.cursor()
-    # cursor.execute("SELECT houseownerapp_slotbooking.booking_date,houseownerapp_bookingstatus.collection_date,corporationapp_wastes.waste_type,houseownerapp_bookingstatus.status,corporationapp_employee.firstname,corporationapp_employee.lastname from houseownerapp_slotbooking inner join corporationapp_wastes on corporationapp_wastes.id = houseownerapp_slotbooking.waste_id_id inner join houseownerapp_bookingstatus on houseownerapp_slotbooking.id = houseownerapp_bookingstatus.slot_id_id inner join corporationapp_employee on houseownerapp_bookingstatus.supervisor_id_id = corporationapp_employee.id where houseownerapp_slotbooking.houseowner_id_id = %s and houseownerapp_bookingstatus.status != %s",[ho_id,"Collected"])
     cursor.execute("SELECT  houseownerapp_bookingstatus.id,houseownerapp_slotbooking.booking_date,houseownerapp_bookingstatus.collection_date,corporationapp_wastes.waste_type,houseownerapp_bookingstatus.status from houseownerapp_slotbooking inner join corporationapp_wastes on corporationapp_wastes.id = houseownerapp_slotbooking.waste_id_id inner join houseownerapp_bookingstatus on houseownerapp_slotbooking.id = houseownerapp_bookingstatus.slot_id_id where houseownerapp_slotbooking.houseowner_id_id = %s and houseownerapp_bookingstatus.status != %s",[ho_id,"Collected"])
 
     result = cursor.fetchall()
@@ -141,6 +157,10 @@ def getBookingStatus(request):
     return Response(final_list)
 
 
+'''
+House Owner - Monthly Bill Generation
+Developed by: KIRAN
+'''
 @api_view(['GET'])
 def getBillGeneration(request):
     token = request.headers['Authorization']
@@ -189,6 +209,11 @@ def getBillGeneration(request):
             final_list.append(bill_item)
         return Response({'bill':final_list,'grandtotal':grand_total})     
 
+
+'''
+House Owner - Online Payment
+Developed by: KIRAN
+'''
 @api_view(['POST'])
 def postPayment(request):
     token = request.headers['Authorization']
@@ -228,66 +253,11 @@ def postPayment(request):
     else:
         return Response({'status':0,'message':'OOPS Some error occured','data':serializer.errors})
 
-@api_view(['POST'])
-def postComplaints(request):
 
-    token = request.headers['Authorization']
-    if not token:
-        raise AuthenticationFailed('Unauthenticated!')
-    try:
-        payload = jwt.decode(token,'secret',algorithms=['HS256'])
-    except jwt.ExpiredSignatureError :
-        raise AuthenticationFailed('Unauthenticated!')  
-
-    ho_id = payload['id']
-    subject = request.data['subject']
-    description = request.data['description']
-    registrationdate = request.data['registrationdate']
-    issuedate = request.data['issuedate'] 
-    user = houseowner.objects.filter(id = ho_id).first()
-    wardno = user.wardno
-
-    data ={'houseowner_id':ho_id,'wardno':wardno,'subject':subject,'description':description,'registrationdate':registrationdate,'issuedate':issuedate}
-    serializer = complaintsSerializer(data = data)
-
-    if(serializer.is_valid()):
-        serializer.save()
-        data_1 = {'houseowner_id':ho_id,'registrationdate':registrationdate,'complaints_id':serializer.data['id']}
-        serializer_1 = complaintStatusSerializer(data = data_1)
-        if(serializer_1.is_valid()):
-            serializer_1.save()
-        return Response({'status':1,'message':'Successfully Saved','data':serializer.data})
-    else:
-        return Response({'status':0,'message':'OOPS Some error occured','data':serializer.errors})
-
-@api_view(['GET'])
-def getcomplaintstatus(request):
-
-    token = request.headers['Authorization']
-    if not token:
-        raise AuthenticationFailed('Unauthenticated!')
-    try:
-        payload = jwt.decode(token,'secret',algorithms=['HS256'])
-    except jwt.ExpiredSignatureError:
-        raise AuthenticationFailed('Unauthenticated!')
- 
-    cursor = connection.cursor()
-    cursor.execute("SELECT houseownerapp_complaints.registrationdate,houseownerapp_complaints.issuedate,houseownerapp_complaints.subject,houseownerapp_complaints.description,houseownerapp_complaintstatus.remarks,houseownerapp_complaintstatus.status from houseownerapp_complaints inner join houseownerapp_complaintstatus on houseownerapp_complaints.id = houseownerapp_complaintstatus.complaints_id_id")
-    result = cursor.fetchall()
-    final_list=[]
-
-    for item in result:
-        singleitem={}
-        singleitem["registrationdate"]=item[0]
-        singleitem["issuedate"]=item[1]
-        singleitem["subject"]=item[2]
-        singleitem["description"]=item[3]
-        singleitem["remarks"]=item[4]
-        singleitem["status"]=item[5]
-        final_list.append(singleitem)
-
-    return Response(final_list)
-
+'''
+House Owner - Payment History
+Developed by: ARJUN
+'''
 @api_view(['GET'])
 def getPaymentHistory(request):
     token = request.headers['Authorization']

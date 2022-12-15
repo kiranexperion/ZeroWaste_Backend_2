@@ -7,7 +7,9 @@ import jwt, datetime
 
 from .models import login
 from CorporationApp.models import employee
+
 from .serializers import loginSerializer
+
 
 @api_view(['POST'])
 def postlogin(request):
@@ -32,12 +34,12 @@ def postlogin(request):
         raise AuthenticationFailed('Incorrect password')
     payload = {
         'id':user.userid,
-        'exp':datetime.datetime.utcnow()+datetime.timedelta(minutes=60),
+        'exp':datetime.datetime.utcnow()+datetime.timedelta(minutes = 60),
         'iat':datetime.datetime.utcnow()
     }
 
-    token = jwt.encode(payload, 'secret',algorithm='HS256')
+    token = jwt.encode(payload, 'secret', algorithm = 'HS256')
     response =  Response()
-    response.set_cookie(key = 'jwt',value=token, httponly=True)
-    response.data = {'jwt': token,'status':1,'role':user.roleid.id}
+    response.set_cookie(key = 'jwt', value = token, httponly = True)
+    response.data = {'jwt': token, 'status':1, 'role':user.roleid.id}
     return response

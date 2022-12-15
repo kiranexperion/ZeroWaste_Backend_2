@@ -4,21 +4,11 @@ from rest_framework.decorators import api_view
 from rest_framework.exceptions import NotFound,AuthenticationFailed
 from rest_framework.response import Response
 
-from .models import wards
-from .models import wastecollector
-from .models import wastes
-from .models import employee
-from HouseOwnerApp.models import houseowner,slotbooking
-# from HouseOwnerApp.models import login
-from HouseOwnerApp.models import bookingstatus
-from .models import collectionstatus
+from .models import wards, wastecollector, wastes, employee, collectionstatus
+from HouseOwnerApp.models import houseowner, slotbooking, bookingstatus, paymentstatus
 from LoginApp.models import login
 
-from .serializers import wardsSerializer
-from .serializers import wastesSerializer
-from .serializers import wastecollectorSerializer
-from .serializers import collectionstatusSerializer
-from .serializers import employeeSerializer
+from .serializers import wardsSerializer, wastesSerializer, wastecollectorSerializer, collectionstatusSerializer, employeeSerializer
 from LoginApp.serializers import loginSerializer
 
 import jwt, datetime
@@ -26,161 +16,51 @@ from django.db import connection
 import pandas as pd
 
 
+'''
+To get the list of wards
+Developed by: KIRAN
+'''
 @api_view(['GET'])
 def getWards(request):
     wardsList = wards.objects.all()
     serializer = wardsSerializer(wardsList, many = True)
     return Response(serializer.data)
 
+
+'''
+To get the list of wastes
+Developed by: KIRAN
+'''
 @api_view(['GET'])
 def getWastes(request):
     wasteList = wastes.objects.all()
     serializer = wastesSerializer(wasteList, many = True)
     return Response(serializer.data)
 
-#To display the list of collectors based on ward - Corporation->Contract Employees
-@api_view(['POST'])
-def postCollectorList(request):
-    token = request.headers['Authorization']
-    if not token:
-        raise AuthenticationFailed('Unauthenticated!')
-    try:
-        payload = jwt.decode(token,'secret',algorithms=['HS256'])
-    except jwt.ExpiredSignatureError :
-        raise AuthenticationFailed('Unauthenticated!')
 
-    data_wardno = request.data['wardno']
-    list = wastecollector.objects.filter(wardno = data_wardno)
-    
-    if not list:
-       return Response({'status':0})
-    else:
-        serializer = wastecollectorSerializer(list, many = True)
-        return Response({'status':1,'data':serializer.data})
+'''
+To get the list of supervisors(id and name) - for dropdown
+Developed by: KIRAN
+'''
+@api_view(['GET'])
+def getSupervisors(request):
+    supervisorsList = employee.objects.filter(role_id = 4)
 
-@api_view(['PUT'])
-def updateCollector(request):
+    final_list=[]
+    for item in supervisorsList:
+        singleitem={}
+        singleitem['id'] = item.id
+        singleitem['name']= item.firstname + " " + item.lastname
 
-    token = request.headers['Authorization']
-    if not token:
-        raise AuthenticationFailed('Unauthenticated!')
-    try:
-        payload = jwt.decode(token,'secret',algorithms=['HS256'])
-    except jwt.ExpiredSignatureError :
-        raise AuthenticationFailed('Unauthenticated!')
+        final_list.append(singleitem)
 
-    data_id =request.data['id']
-    data_email=request.data['email']
-    data_phoneno=request.data['phoneno']
-    data_address=request.data['address']
-    collector = wastecollector.objects.filter(id = data_id).first()
-    if collector is None:
-        raise NotFound('Not found.')
-    else:
-        collector.email=data_email
-        collector.phoneno=data_phoneno
-        collector.address=data_address
-        collector.save()
-        serializer=wastecollectorSerializer(collector,many=False)
-        return Response({'status':1,'data':serializer.data})
+    return Response(final_list)
 
- 
 
-@api_view(['POST'])
-def postAddCollector(request):
-    token = request.headers['Authorization']
-    if not token:
-        raise AuthenticationFailed('Unauthenticated!')
-    try:
-        payload = jwt.decode(token,'secret',algorithms=['HS256'])
-    except jwt.ExpiredSignatureError :
-        raise AuthenticationFailed('Unauthenticated!')
-
-    serializer = wastecollectorSerializer(data = request.data)
-    if(serializer.is_valid()):
-        serializer.save()
-        return Response({'status':1,'message':'Successfully Saved','data':serializer.data})
-    else:
-        return Response({'status':0,'message':'OOPS Some error occured','data':serializer.errors})
-
-@api_view(['POST'])
-def postDeleteCollector(request):
-    token = request.headers['Authorization']
-    if not token:
-        raise AuthenticationFailed('Unauthenticated!')
-    try:
-        payload = jwt.decode(token,'secret',algorithms=['HS256'])
-    except jwt.ExpiredSignatureError :
-        raise AuthenticationFailed('Unauthenticated!')
-
-    data_id=request.data['id']
-    waste = wastecollector.objects.filter(id = data_id).delete()
-    response = Response()
-    if waste[0]==1:
-        response.data = {'status':1,'message': 'Successfully deleted'}
-        return response
-    else:
-        return Response({'status':0})
-
-@api_view(['PUT'])
-def updateWaste(request):
-    token = request.headers['Authorization']
-    if not token:
-        raise AuthenticationFailed('Unauthenticated!')
-    try:
-        payload = jwt.decode(token,'secret',algorithms=['HS256'])
-    except jwt.ExpiredSignatureError :
-        raise AuthenticationFailed('Unauthenticated!')
-
-    data_id =request.data['id']
-    data_charge=request.data['charge']
-    waste = wastes.objects.filter(id = data_id).first()
-    if waste is None:
-        raise NotFound('Not found.')
-    else:
-        waste.charge=data_charge
-        waste.save()
-        serializer=wastesSerializer(waste,many=False)
-        return Response({'status':1,'data':serializer.data})
-
-@api_view(['POST'])
-def postAddWaste(request):
-    token = request.headers['Authorization']
-    if not token:
-        raise AuthenticationFailed('Unauthenticated!')
-    try:
-        payload = jwt.decode(token,'secret',algorithms=['HS256'])
-    except jwt.ExpiredSignatureError :
-        raise AuthenticationFailed('Unauthenticated!')
-
-    serializer = wastesSerializer(data = request.data)
-    if(serializer.is_valid()):
-        serializer.save()
-        return Response({'status':1,'message':'Successfully Saved','data':serializer.data})
-    else:
-        return Response({'status':0,'message':'OOPS Some error occured','data':serializer.errors})
-
-@api_view(['POST'])
-def postDeleteWaste(request):
-    token = request.headers['Authorization']
-    if not token:
-        raise AuthenticationFailed('Unauthenticated!')
-    try:
-        payload = jwt.decode(token,'secret',algorithms=['HS256'])
-    except jwt.ExpiredSignatureError :
-        raise AuthenticationFailed('Unauthenticated!')
-
-    data_id=request.data['id']
-    waste = wastes.objects.filter(id = data_id).delete()
-
-    response = Response()
-    if waste[0]==1:
-        response.data = {'status':1,'message': 'Successfully deleted'}
-        return response
-    else:
-        return Response({'status':0})
-
-#Updation from supervisor
+'''
+Supervisor - Waste Collection Updation
+Developed by: KIRAN
+'''
 @api_view(['POST'])
 def postCollectionStatusUpdate(request):
     token = request.headers['Authorization']
@@ -210,7 +90,11 @@ def postCollectionStatusUpdate(request):
         serializer = collectionstatusSerializer(collection_status,many = False)
         return Response({'status':1,'data':serializer.data})
 
-#View the collection status based on a collection date
+
+'''
+SuperAdmin/Admin - View the collection status based on a collection date
+Developed by: KIRAN
+'''
 @api_view(['POST'])
 def postCollectionStatus(request):
     token = request.headers['Authorization']
@@ -235,6 +119,11 @@ def postCollectionStatus(request):
         final_list.append(singleitem)
     return Response(final_list)
 
+
+'''
+SuperAdmin/Admin - Allot Supervisor and collection date for a ward after analysing the ward with highest quantity of wastes
+Developed by: KIRAN
+'''
 @api_view(['POST'])
 def postCollectorAllocation(request):
     token = request.headers['Authorization']
@@ -256,7 +145,6 @@ def postCollectorAllocation(request):
         serializer.save()
 
     x = bookingstatus.objects.all()
-    print(x)
     for item in x:
         print(item.slot_id.houseowner_id.wardno)
         if(item.slot_id.houseowner_id.wardno.wardno == wardno):
@@ -266,7 +154,11 @@ def postCollectorAllocation(request):
             item.save()
     return Response({'status':1})
 
-# Excel file upload of contract employees
+
+'''
+SuperAdmin/Admin - To upload Excel file containing details of contract employees(waste collectors)
+Developed by: ARJUN
+'''
 @api_view(['POST'])
 def Employee_details(request):
     token = request.headers['Authorization']
@@ -277,11 +169,8 @@ def Employee_details(request):
     except jwt.ExpiredSignatureError :
         raise AuthenticationFailed('Unauthenticated!')
 
-    if request.method == 'POST' and request.FILES['file']:
-        # fs=FileSystemStorage()
-        # filename=fs.save      
+    if request.method == 'POST' and request.FILES['file']:     
         employeeexceldata = pd.read_excel(request.FILES['file'] )
-        # print(productexceldata)
         dbframe = employeeexceldata
         for dbframe in dbframe.itertuples():
             obj = wastecollector.objects.create(firstname=dbframe.firstname,lastname=dbframe.lastname,email=dbframe.email, phoneno=dbframe.phoneno, address=dbframe.address,wardno_id=dbframe.wardno_id,)
@@ -289,21 +178,254 @@ def Employee_details(request):
 
     return Response({'message':'File Added Successfully'})
 
+
+'''
+SuperAdmin/Admin - To analyse the ward with highest quantity of waste before allocation
+Developed by: KIRAN
+'''
+@api_view(['POST'])
+def postWasteReport(request):
+    token = request.headers['Authorization']
+    if not token:
+        raise AuthenticationFailed('Unauthenticated!')
+    try:
+        payload = jwt.decode(token,'secret',algorithms=['HS256'])
+    except jwt.ExpiredSignatureError :
+        raise AuthenticationFailed('Unauthenticated!')
+
+    wasteid = request.data['wasteid']
+
+    slots = slotbooking.objects.filter(waste_id = wasteid)
+    ward_quantity_list = {}
+    for slot in slots:
+            slot_status = bookingstatus.objects.filter(slot_id = slot.id).first()
+            if slot_status.status != 'Collected':
+                wardname = slot.houseowner_id.wardno.wardname
+                if wardname not in ward_quantity_list:
+                    ward_quantity_list[wardname] = slot.quantity
+                else:
+                    ward_quantity_list[wardname] = ward_quantity_list[wardname] + slot.quantity
+    final_list = [ward_quantity_list]
+    return Response(final_list)
+
+
+'''
+SuperAdmin/Admin - To view the list of houseowners whose payment is pending and also those who have completed the payment
+Developed by: ARJUN
+'''
 @api_view(['GET'])
-def getSupervisors(request):
-    supervisorsList = employee.objects.filter(role_id = 4)
+def getPaymentReport(request):
 
+    token = request.headers['Authorization']
+    if not token:
+        raise AuthenticationFailed('Unauthenticated!')
+    try:
+        payload = jwt.decode(token,'secret',algorithms=['HS256'])
+    except jwt.ExpiredSignatureError :
+        raise AuthenticationFailed('Unauthenticated!') 
+
+    payments_status = paymentstatus.objects.all()
+    today = datetime.date.today()
+    current_month = today.month      
     final_list=[]
-    for item in supervisorsList:
-        singleitem={}
-        singleitem['id'] = item.id
-        singleitem['name']= item.firstname + " " + item.lastname
 
+    for item in payments_status:
+        ho_id = item.houseowner
+        lastpay_month = item.last_paydate.month
+        singleitem = {}
+        singleitem["firstname"] = ho_id.firstname
+        singleitem["last"] = ho_id.lastname
+        singleitem["phoneno"] = ho_id.phoneno
+        singleitem["address"] = ho_id.address
+        singleitem["wardname"] = ho_id.wardno.wardname
+
+        if current_month == lastpay_month:    
+            singleitem["status"] = 'Paid'
+        else:
+            singleitem["status"] = 'Pending'
         final_list.append(singleitem)
 
     return Response(final_list)
 
 
+'''
+SuperAdmin/Admin - To display the list of contract employees(waste collectors) based on ward
+Developed by: ARJUN
+'''
+@api_view(['POST'])
+def postCollectorList(request):
+    token = request.headers['Authorization']
+    if not token:
+        raise AuthenticationFailed('Unauthenticated!')
+    try:
+        payload = jwt.decode(token,'secret',algorithms=['HS256'])
+    except jwt.ExpiredSignatureError :
+        raise AuthenticationFailed('Unauthenticated!')
+
+    data_wardno = request.data['wardno']
+    list = wastecollector.objects.filter(wardno = data_wardno)
+    
+    if not list:
+       return Response({'status':0})
+    else:
+        serializer = wastecollectorSerializer(list, many = True)
+        return Response({'status':1,'data':serializer.data})
+
+
+'''
+SuperAdmin/Admin - To edit the details of a contract employee(waste collector)
+Developed by: ARJUN
+'''
+@api_view(['PUT'])
+def updateCollector(request):
+
+    token = request.headers['Authorization']
+    if not token:
+        raise AuthenticationFailed('Unauthenticated!')
+    try:
+        payload = jwt.decode(token,'secret',algorithms=['HS256'])
+    except jwt.ExpiredSignatureError :
+        raise AuthenticationFailed('Unauthenticated!')
+
+    data_id =request.data['id']
+    data_email=request.data['email']
+    data_phoneno=request.data['phoneno']
+    data_address=request.data['address']
+    collector = wastecollector.objects.filter(id = data_id).first()
+    if collector is None:
+        raise NotFound('Not found.')
+    else:
+        collector.email=data_email
+        collector.phoneno=data_phoneno
+        collector.address=data_address
+        collector.save()
+        serializer=wastecollectorSerializer(collector,many=False)
+        return Response({'status':1,'data':serializer.data})
+
+ 
+'''
+SuperAdmin/Admin - To add a new contract employee(waste collector)
+Developed by: ARJUN
+'''
+@api_view(['POST'])
+def postAddCollector(request):
+    token = request.headers['Authorization']
+    if not token:
+        raise AuthenticationFailed('Unauthenticated!')
+    try:
+        payload = jwt.decode(token,'secret',algorithms=['HS256'])
+    except jwt.ExpiredSignatureError :
+        raise AuthenticationFailed('Unauthenticated!')
+
+    serializer = wastecollectorSerializer(data = request.data)
+    if(serializer.is_valid()):
+        serializer.save()
+        return Response({'status':1,'message':'Successfully Saved','data':serializer.data})
+    else:
+        return Response({'status':0,'message':'OOPS Some error occured','data':serializer.errors})
+
+
+'''
+SuperAdmin/Admin - Delete contract employee(waste collector)
+Developed by: ARJUN
+'''
+@api_view(['POST'])
+def postDeleteCollector(request):
+    token = request.headers['Authorization']
+    if not token:
+        raise AuthenticationFailed('Unauthenticated!')
+    try:
+        payload = jwt.decode(token,'secret',algorithms=['HS256'])
+    except jwt.ExpiredSignatureError :
+        raise AuthenticationFailed('Unauthenticated!')
+
+    data_id=request.data['id']
+    waste = wastecollector.objects.filter(id = data_id).delete()
+    response = Response()
+    if waste[0]==1:
+        response.data = {'status':1,'message': 'Successfully deleted'}
+        return response
+    else:
+        return Response({'status':0})
+
+
+'''
+SuperAdmin - To edit the details of waste
+Developed by: ARJUN
+'''
+@api_view(['PUT'])
+def updateWaste(request):
+    token = request.headers['Authorization']
+    if not token:
+        raise AuthenticationFailed('Unauthenticated!')
+    try:
+        payload = jwt.decode(token,'secret',algorithms=['HS256'])
+    except jwt.ExpiredSignatureError :
+        raise AuthenticationFailed('Unauthenticated!')
+
+    data_id =request.data['id']
+    data_charge=request.data['charge']
+    waste = wastes.objects.filter(id = data_id).first()
+    if waste is None:
+        raise NotFound('Not found.')
+    else:
+        waste.charge=data_charge
+        waste.save()
+        serializer=wastesSerializer(waste,many=False)
+        return Response({'status':1,'data':serializer.data})
+
+
+'''
+SuperAdmin - To add a new waste type and its details
+Developed by: ARJUN
+'''
+@api_view(['POST'])
+def postAddWaste(request):
+    token = request.headers['Authorization']
+    if not token:
+        raise AuthenticationFailed('Unauthenticated!')
+    try:
+        payload = jwt.decode(token,'secret',algorithms=['HS256'])
+    except jwt.ExpiredSignatureError :
+        raise AuthenticationFailed('Unauthenticated!')
+
+    serializer = wastesSerializer(data = request.data)
+    if(serializer.is_valid()):
+        serializer.save()
+        return Response({'status':1,'message':'Successfully Saved','data':serializer.data})
+    else:
+        return Response({'status':0,'message':'OOPS Some error occured','data':serializer.errors})
+
+
+'''
+SuperAdmin - Delete Waste
+Developed by: ARJUN
+'''
+@api_view(['POST'])
+def postDeleteWaste(request):
+    token = request.headers['Authorization']
+    if not token:
+        raise AuthenticationFailed('Unauthenticated!')
+    try:
+        payload = jwt.decode(token,'secret',algorithms=['HS256'])
+    except jwt.ExpiredSignatureError :
+        raise AuthenticationFailed('Unauthenticated!')
+
+    data_id=request.data['id']
+    waste = wastes.objects.filter(id = data_id).delete()
+
+    response = Response()
+    if waste[0]==1:
+        response.data = {'status':1,'message': 'Successfully deleted'}
+        return response
+    else:
+        return Response({'status':0})
+
+
+'''
+SuperAdmin/Admin - To get the list of supervisors(contains all details of a supervisor)
+Developed by: ARJUN
+'''
 @api_view(['GET'])
 def getSupervisorList(request):
     token = request.headers['Authorization']
@@ -322,6 +444,11 @@ def getSupervisorList(request):
         serializer = employeeSerializer(supervisorList, many = True)
         return Response({'status':1,'data':serializer.data})
 
+
+'''
+SuperAdmin/Admin - To edit the details of a supervisor
+Developed by: ARJUN
+'''
 @api_view(['PUT'])
 def updateSupervisor(request):
 
@@ -349,7 +476,10 @@ def updateSupervisor(request):
         return Response({'status':1,'data':serializer.data})
 
  
-
+'''
+SuperAdmin/Admin - To add a new supervisor
+Developed by: ARJUN
+'''
 @api_view(['POST'])
 def postAddSupervisor(request):
     token = request.headers['Authorization']
@@ -374,6 +504,11 @@ def postAddSupervisor(request):
     else:
         return Response({'status':0,'message':'OOPS Some error occured','data':serializer.errors})
 
+
+'''
+SuperAdmin/Admin - Delete supervisor
+Developed by: ARJUN
+'''
 @api_view(['POST'])
 def postDeleteSupervisor(request):
     token = request.headers['Authorization']
@@ -394,67 +529,7 @@ def postDeleteSupervisor(request):
 
         return Response({'status':0})
 
-@api_view(['POST'])
-def postWasteReport(request):
-    token = request.headers['Authorization']
-    if not token:
-        raise AuthenticationFailed('Unauthenticated!')
-    try:
-        payload = jwt.decode(token,'secret',algorithms=['HS256'])
-    except jwt.ExpiredSignatureError :
-        raise AuthenticationFailed('Unauthenticated!')
-
-    wasteid = request.data['wasteid']
-
-    slots = slotbooking.objects.filter(waste_id = wasteid)
-    ward_quantity_list = {}
-    for slot in slots:
-            slot_status = bookingstatus.objects.filter(slot_id = slot.id).first()
-            if slot_status.status != 'Collected':
-                wardname = slot.houseowner_id.wardno.wardname
-                if wardname not in ward_quantity_list:
-                    ward_quantity_list[wardname] = slot.quantity
-                else:
-                    ward_quantity_list[wardname] = ward_quantity_list[wardname] + slot.quantity
-    final_list = [ward_quantity_list]
-    return Response(final_list)
-
-# @api_view(['POST'])
-# def postChangePassword(request):
-#     token = request.headers['Authorization']
-#     if not token:
-#         raise AuthenticationFailed('Unauthenticated!')
-#     try:
-#         payload = jwt.decode(token,'secret',algorithms=['HS256'])
-#     except jwt.ExpiredSignatureError :
-#         raise AuthenticationFailed('Unauthenticated!')
-
-#     supervisor_id = payload['id']
-#     new_password = request.data['newpw']
-#     supervisor = login.objects.filter(roleid = 4, userid = supervisor_id).first()
-#     supervisor.password = new_password
-    
-#     # data = {'roleid':4, 'userid':supervisor_id,'email':email,'password':new_password}
-#     # serializer = loginSerializer(data = data)
-#     # if(supervisor.is_valid()):
-#     supervisor.save()
-#     data_password = supervisor.password
-#     if not supervisor.check_password(data_password):
-#         return Response({'status':0,'message':'OOPS Some error occured'})
-#     else:
-#         return Response({'status':1,'message':'Password Changed Successfully'})
-#     # else:
-#     #     return Response({'status':0,'message':'OOPS Some error occured','data':supervisor.errors})
 
 
-
-'''
-SUPERADMIN - Reports?
-SUPERADMIN/ADMIN - Waste report - KIRAN - Done - integration pending
-                - Payment report - ARJUN
-                - Complaint inbox
-SUPERVISOR - Collection Details
-            - Change Password
-'''
 
                   

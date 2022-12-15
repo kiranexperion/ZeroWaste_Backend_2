@@ -9,7 +9,5 @@ urlpatterns = [
     path('houseowner/bookingstatus/', views.getBookingStatus, name = 'bookingstatus'),
     path('houseowner/invoice/', views.getBillGeneration, name = 'invoice'),
     path('houseowner/payment/', views.postPayment, name = 'payment'),
-    path('houseownerapp/complaintregistration/', views.postComplaints, name = 'complaints'),
-    path('houseownerapp/complaintstatus/', views.getcomplaintstatus, name = 'complaintstatus'),
-    path('houseownerapp/paymenthistory/',views.getPaymentHistory,name = 'paymenthistory'),
+    path('houseowner/paymenthistory/',views.getPaymentHistory,name = 'paymenthistory'),
 ]
